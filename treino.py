@@ -8,20 +8,6 @@ import os
 
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
-
-def connect(params_dic):
-    """ Connect to the PostgreSQL database server """
-    conn = None
-    try:
-        # connect to the PostgreSQL server
-        print('Connecting to the PostgreSQL database...')
-        conn = psycopg2.connect(**params_dic)
-    except (Exception, psycopg2.DatabaseError) as error:
-        print(error)
-    print("Connection successful")
-    return conn
-
-
 class PSQLConn(object):
     """Stores the connection to psql."""
     def __init__(self, db, user, password, host):
@@ -81,8 +67,8 @@ class ExtractFromDataBase(luigi.Task):
             path = fullname
             dataframe.to_csv(path, index = False)
 
-    def create_dic_paths(self):
-        conn = connect(self.param_dic)
+    def create_dic_paths(self, conn):
+      
 
         tables = self.tables_names_list(conn)
         dic_paths = {}
@@ -152,6 +138,8 @@ class ExtractLocal(luigi.Task):
 
     # Assign credentials here
     cred = PSQLConn(database, user, password, host)
+    conn = self.cred.connect()
+
 
     date = luigi.DateParameter(default=datetime.today())
 
@@ -163,13 +151,13 @@ class ExtractLocal(luigi.Task):
         return luigi.LocalTarget(f"./data/ordens_dos_clientes.csv")
 
     def run(self):
-        conn = connect(self.param_dic)
+
         # read in file as list﻿
         df_orders_details = pd.read_csv(f"./data/csv/{self.date}/order_details.csv")
         df_orders_table = pd.read_csv(f"./data/postgres/orders/{self.date}/orders.csv")
 
-        df_orders_details.to_sql(f'orders_details_{self.date}', con = conn)
-        df_orders_table.to_sql(f'orders_details_{self.date}', con = conn)
+        df_orders_details.to_sql(f'orders_details_{self.date}', con = self.conn)
+        df_orders_table.to_sql(f'orders_details_{self.date}', con = self.conn)
 
         self.orders_query()
 
@@ -186,7 +174,7 @@ class ExtractLocal(luigi.Task):
         with self.output().open("w") as out_file:
             for row in rows:
                 out_file.write(str(row))
-                
+
         #Query que busca o nome de todas as tabelas contidas no banco de dados
         s = ""
         s += "SELECT"
