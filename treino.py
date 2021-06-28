@@ -6,6 +6,9 @@ import pandas.io.sql as psql
 from datetime import datetime
 import os
 
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+
+
 def connect(params_dic):
     """ Connect to the PostgreSQL database server """
     conn = None
@@ -18,6 +21,25 @@ def connect(params_dic):
     print("Connection successful")
     return conn
 
+
+class PSQLConn(object):
+    """Stores the connection to psql."""
+    def __init__(self, db, user, password, host):
+        self.db = db
+        self.user = user
+        self.password = password
+        self.host = host
+
+    def connect(self):
+        connection = psycopg2.connect(
+                host=self.host,
+                database=self.db,
+                user=self.user,
+                password=self.password)
+        connection.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+        return connection
+
+
 class ExtractFromDataBase(luigi.Task):
     date = luigi.DateParameter(default=datetime.today())
 
@@ -27,12 +49,9 @@ class ExtractFromDataBase(luigi.Task):
     host="127.0.0.1"
     port="5432"
 
-    param_dic = {
-        "host"      : str(host),
-        "database"  : str(database),
-        "user"      : str(user),
-        "password"  : str(password)
-        }
+    # Assign credentials here
+    cred = PSQLConn(database, user, password, host)
+    conn = cred.connect()
 
     def output(self):
         return self.create_dic_paths()
@@ -131,12 +150,8 @@ class ExtractLocal(luigi.Task):
     host="127.0.0.1"
     port="5432"
 
-    param_dic = {
-        "host"      : str(host),
-        "database"  : str(database),
-        "user"      : str(user),
-        "password"  : str(password)
-        }
+    # Assign credentials here
+    cred = PSQLConn(database, user, password, host)
 
     date = luigi.DateParameter(default=datetime.today())
 
@@ -157,9 +172,21 @@ class ExtractLocal(luigi.Task):
         df_orders_table.to_sql(f'orders_details_{self.date}', con = conn)
 
         self.orders_query()
-        
 
-    def orders_query_to_json(self):
+
+    def orders_query_to_json(self,conn):
+
+        with conn.cursor() as curs:
+            curs.execute("CREATE dummy_table;")
+
+        with conn.cursor() as curs:
+            curs.execute("SELECT * FROM dummy_table;")
+            rows = curs.fetchall()
+
+        with self.output().open("w") as out_file:
+            for row in rows:
+                out_file.write(str(row))
+                
         #Query que busca o nome de todas as tabelas contidas no banco de dados
         s = ""
         s += "SELECT"
