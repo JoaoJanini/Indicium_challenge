@@ -1,12 +1,12 @@
-# Data Pipeline.
+# Data Pipeline
 
 To build the pipeline, I used a python framework called Luigi. Luigi let's you create idempotent task, define their outputs and their dependencies. It was developed by Spotify and it is used by many companies. 
 
 For the database, in order to keep the code consistent, I used also used postgres.
 
-## Inicializa os bancos de dados.
+## Setup the DataBases.
 
-Execute this docker compose command to step up the challenge database and the final query database;
+Execute this docker compose command to Setup the challenge database and the final query database;
 
 ```bash
 docker-compose up
@@ -49,8 +49,6 @@ PYTHONPATH='.' luigi --module stepTwo ExtractLocal --local-scheduler
 ```
 
 
-
-
 ## Comments:
 
 Alternatively, for every listed step, you could specify the parameter date for any of the tasks listed above.
@@ -59,5 +57,4 @@ Alternatively, for every listed step, you could specify the parameter date for a
 PYTHONPATH='.' luigi --module stepTwo ExtractLocal --date 2021-10-10 --local-scheduler
 ```
 
-
-If the output of a task is found on the file system, the file will not execute again, as the scheduler will consider it as already successeded
+If the output of a task is found on the file system, the file will not execute again, as the scheduler will consider it as already succeeded.
