@@ -4,7 +4,6 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
 class PSQLConn(object):
     """Stores the connection to psql."""
-    
     def __init__(self, db, user, password, host, port):
         self.db = db
         self.user = user

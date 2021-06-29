@@ -35,8 +35,8 @@ class ExtractLocal(luigi.Task):
     def requires(self):
         # Defines the dependency of the task. In this case the dependency are the completion of both 
         # the ExtractFromDataBase task and ExtractFromCSV task.
-        return { "data_base_tables": ExtractFromDataBase(),
-        "orders_csv": ExtractFromCSV()}
+        return { "data_base_tables": ExtractFromDataBase(self.date),
+        "orders_csv": ExtractFromCSV(self.date)}
 
     def output(self):
         # The task returns the csv resulted from the query.
