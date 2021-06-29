@@ -1,29 +1,10 @@
 
-import psycopg2
 import pandas as pd
 import luigi
-import pandas.io.sql as psql
+import pandas.io.sql as psqlio
 from datetime import datetime
 import os
-
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-
-class PSQLConn(object):
-    """Stores the connection to psql."""
-    def __init__(self, db, user, password, host):
-        self.db = db
-        self.user = user
-        self.password = password
-        self.host = host
-
-    def connect(self):
-        connection = psycopg2.connect(
-                host=self.host,
-                database=self.db,
-                user=self.user,
-                password=self.password)
-        connection.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-        return connection
+import PSQLConn as psql
 
 
 class ExtractFromDataBase(luigi.Task):
@@ -36,7 +17,7 @@ class ExtractFromDataBase(luigi.Task):
     port="5432"
 
     # Assign credentials here
-    cred = PSQLConn(database, user, password, host)
+    cred = psql.PSQLConn(database, user, password, host, port)
     conn = cred.connect()
 
     def output(self):
@@ -45,15 +26,13 @@ class ExtractFromDataBase(luigi.Task):
     def run(self):
 
         #Faz a conexão com o banco de dados
-        conn = connect(self.param_dic)
-
-        list_tables = self.tables_names_list(conn)  
+        list_tables = self.tables_names_list(self.conn)  
         
         for table in list_tables:
             table_name = table
            
             #Buscar a table utilizando um select statement pelo nome da table e salvar o resultado como um dataframe.
-            dataframe = psql.read_sql(f'SELECT * FROM {table_name}', conn)
+            dataframe = psqlio.read_sql(f'SELECT * FROM {table_name}', self.conn)
 
             #Name of the csv containing the table.
             outname = f'{table_name}.csv'
@@ -67,10 +46,9 @@ class ExtractFromDataBase(luigi.Task):
             path = fullname
             dataframe.to_csv(path, index = False)
 
-    def create_dic_paths(self, conn):
+    def create_dic_paths(self):
       
-
-        tables = self.tables_names_list(conn)
+        tables = self.tables_names_list(self.conn)
         dic_paths = {}
 
         for table in tables:
@@ -114,7 +92,7 @@ class ExtractFromCSV(luigi.Task):
         order_details_df = pd.read_csv('data/order_details.csv')
 
         #Name of the csv containing the csv.
-        outname = 'orders_csv.csv'
+        outname = 'order_details.csv'
         #Nome do diretório onde será salvo o csv.
         outdir = f"./data/csv/{self.date}"
 
@@ -128,72 +106,5 @@ class ExtractFromCSV(luigi.Task):
         path_csv = fullname
         order_details_df.to_csv(path_csv, index = False)
 
-class ExtractLocal(luigi.Task):
 
-    database="OrdersDB" 
-    user="postgres"
-    password="docker"
-    host="127.0.0.1"
-    port="5432"
-
-    # Assign credentials here
-    cred = PSQLConn(database, user, password, host)
-    conn = self.cred.connect()
-
-
-    date = luigi.DateParameter(default=datetime.today())
-
-    def requires(self):
-        return {"data_base_tables":ExtractFromDataBase(),
-        "orders_csv": ExtractFromCSV()}
-
-    def output(self):
-        return luigi.LocalTarget(f"./data/ordens_dos_clientes.csv")
-
-    def run(self):
-
-        # read in file as list﻿
-        df_orders_details = pd.read_csv(f"./data/csv/{self.date}/order_details.csv")
-        df_orders_table = pd.read_csv(f"./data/postgres/orders/{self.date}/orders.csv")
-
-        df_orders_details.to_sql(f'orders_details_{self.date}', con = self.conn)
-        df_orders_table.to_sql(f'orders_details_{self.date}', con = self.conn)
-
-        self.orders_query()
-
-
-    def orders_query_to_json(self,conn):
-
-        with conn.cursor() as curs:
-            curs.execute("CREATE dummy_table;")
-
-        with conn.cursor() as curs:
-            curs.execute("SELECT * FROM dummy_table;")
-            rows = curs.fetchall()
-
-        with self.output().open("w") as out_file:
-            for row in rows:
-                out_file.write(str(row))
-
-        #Query que busca o nome de todas as tabelas contidas no banco de dados
-        s = ""
-        s += "SELECT"
-        s += " table_name"
-        s += " FROM information_schema.tables"
-        s += " WHERE"
-        s += " ("
-        s += " table_schema = 'public'"
-        s += " )"
-        s += " ORDER BY table_name;"
-
-        #db_cursor para buscar o nome de todas as tabelas.
-        db_cursor = conn.cursor()
-        db_cursor.execute(s)
-        list_tables = db_cursor.fetchall()
-
-
-
-
-
-        
 

@@ -12,3 +12,14 @@ services:
       - ./data/northwind.sql:/docker-entrypoint-initdb.d/northwind.sql
     ports:
       - 5432:5432
+      
+  db-test:
+    image: postgres:12
+    environment: 
+      POSTGRES_DB: db_final
+      POSTGRES_USER: postgresUser
+      POSTGRES_PASSWORD: postgrespassword
+    volumes:
+      - ./dbdata_test:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
